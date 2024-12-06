@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuottinauha</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 10px;
+            background-color: #ddd;
+        }
+        canvas {
+            border: 1px solid #000;
+            margin-top: 5px;
+            background-color: white;
+        }
+        button {
+            margin: 10px;
+            padding: 5px 10px;
+            font-size: 16px;
+        }
+        .notesfield {
+            width: 600px
+        }
+        .notesize {
+            width: 50px
+        }
+        .footer {
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div>
+            <b>NUOTTINAUHA</b> | Syötä nuotit (g0 - d2) pilkulla erotettuun listaan esim. a0,h0,c,g,c2,d2. Pitkä nuotti: c+ c++ c+++, lyhyt nuotti: c-, tauko: x.
+        </div>
+        <input name="notesField" type="text" id="notesField" class="notesfield" value="c,c,h0,a0,e,e,d,c,a,a,g+,f-,e-,d,d,e+,a,a,g,f,e,e,f,d,c,c,h0,h0,a0,a0,a0+" />
+        <button onclick="generateNote()">Luo nuotit</button>
+        <button onclick="getImage()">Lataa kuva</button>
+        Nuotin koko: <input name="noteSize" type="text" maxlength="5" id="noteSize" class="notesize" value="40" />
+    </div>
+    <div>
+        <canvas id="musicCanvas" width="1000" height="500"></canvas>
+    </div>
+    <div class="footer">
+        (c) Digitarhuri
+    </div>
+    <script>
+        const canvas = document.getElementById('musicCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const staffBottom = 500;
+        var noteSize = 50;
+
+        // nuottipaletti
+        const n = ["g0","a0","h0","c1","d1","e1","f1","g1","a1","h1","c2","d2"];
+
+        document.getElementById("notesField").value = getQueryString();
+
+        // lataa nuotit querystring parametrista
+        if (getQueryString().length > 0) {
+            generateNote();
+        }
+
+        // pääfunktio nuottien piirtoon
+        function generateNote() {
+
+            let xx = 0;
+            const notevalues = document.getElementById("notesField").value.toLowerCase().replace(/\s+/g, "");
+            noteSize = parseInt(document.getElementById("noteSize").value);
+
+            // aseta käyttäjän syöttämät nuotit querystring parametriin
+            setQueryString(notevalues);
+
+            const notesList = notevalues.split(",");
+
+            resizeCanvas();
+            //drawLines();
+
+            // looppaa käyttäjän syöttämät nuotit
+            for (let index = 0; index < notesList.length; index++) {
+
+                let curNote = notesList[index];
+                let curNoteLength = 1;
+
+                // käsittele + ja - merkinnät
+                if (curNote.endsWith("-")) {
+                    curNoteLength = 0.5;
+                    curNote = curNote.replace("-","");
+                } else if (curNote.endsWith("+++")) {
+                    curNoteLength = 4;
+                    curNote = curNote.replace("+++","");
+                } else if (curNote.endsWith("++")) {
+                    curNoteLength = 3;
+                    curNote = curNote.replace("++","");
+                } else if (curNote.endsWith("+")) {
+                    curNoteLength = 2;
+                    curNote = curNote.replace("+","");
+                }
+
+                // salli nuottien syöttäminen numerolla tai ilman numeroa
+                // jos numeroa ei ole annettu, lisää numero
+                if (!curNote.endsWith("0") && !curNote.endsWith("1") && !curNote.endsWith("2")) {
+
+                    curNote = curNote + "1";
+                }
+
+                // hateaan nuottitaulukosta käyttäjän syöttämän nuotin indeksinumero, joka toimii nuotin korkeutena piirroksessa
+                const noteHeightIndex = n.findIndex(el=>el == curNote)+1;
+
+                yy = staffBottom - noteHeightIndex * noteSize;
+
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 2;
+
+                // jos nuotti löytyi niin piirretään se
+                if (noteHeightIndex > 0) {
+                    ctx.strokeRect(xx, yy, noteSize * curNoteLength, noteSize);
+                }
+
+                // jos nuotti on + tai - mittainen, säädetään x koordinaattia, jotta seuraava nuotti ei piirry edellisen päälle
+                xx = xx + noteSize * curNoteLength;
+            }
+        }
+
+        function getImage() {
+            // Convert canvas to data URL
+            const dataURL = canvas.toDataURL('image/png');
+
+            // Trigger a download
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'canvas-image.png';
+            link.click();
+        }
+
+        // Piirrä viivasto
+        function drawLines() {
+
+            ctx.strokeStyle = "#aaa";
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < 12; i++) {
+
+                if (i == 3 || i == 10) {
+                    ctx.lineWidth = 3;
+                } else {
+                    ctx.lineWidth = 1;
+                }
+
+                const liney = staffBottom - noteSize * i;
+
+                ctx.beginPath();
+                ctx.moveTo(0, liney);
+                ctx.lineTo(canvas.width, liney);
+                ctx.stroke();
+            }
+        }
+
+        function setQueryString(notevalues) {
+
+            const url = new URL(window.location.href);
+            const params = url.searchParams;
+            params.set('nuotit', notevalues);
+
+            window.history.replaceState({}, '', url);
+        }
+
+        function getQueryString() {
+
+            const currentUrl = window.location.href;
+            const url = new URL(currentUrl);
+            const queryParams = new URLSearchParams(url.search);
+            const paramValue = queryParams.get('nuotit');
+
+            return paramValue;
+        }
+
+        // Skaalaa canvasta
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.95; // Set canvas width to window width
+            canvas.height = window.innerHeight * 0.8; // Set canvas height to window height
+        }
+    </script>
+</body>
+</html>
