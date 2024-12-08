@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            margin: 10px;
+            margin: 5px;
             background-color: #ddd;
         }
         canvas {
@@ -24,8 +24,8 @@
         .notesfield {
             width: 600px
         }
-        .notesize {
-            width: 50px
+        .noteSizeField {
+            width: 30px
         }
         .footer {
             font-size: 11px;
@@ -35,12 +35,12 @@
 <body>
     <div>
         <div>
-            <b>NUOTTINAUHA</b> | Syötä nuotit (g0 - d2) pilkulla erotettuun listaan esim. a0,h0,c,g,c2,d2. Pitkä nuotti: c+ c++ c+++, lyhyt nuotti: c-, tauko: x.
+            <b>NUOTTINAUHA</b> | Syötä nuotit (g0 - d2) esim. a0 h0 c g c2 d2 | Pitkä nuotti: c+ c++ c+++ | Lyhyt nuotti: c- | Tauko: x | Pystyviiva: xx | Kirjain: c*
         </div>
-        <input name="notesField" type="text" id="notesField" class="notesfield" value="c,c,h0,a0,e,e,d,c,a,a,g+,f-,e-,d,d,e+,a,a,g,f,e,e,f,d,c,c,h0,h0,a0,a0,a0+" />
+        <input name="notesField" type="text" id="notesField" class="notesfield" value="" />
         <button onclick="generateNote()">Luo nuotit</button>
         <button onclick="getImage()">Lataa kuva</button>
-        Nuotin koko: <input name="noteSize" type="text" maxlength="5" id="noteSize" class="notesize" value="40" />
+        Nuotin koko: <input name="noteSizeField" type="text" maxlength="5" id="noteSizeField" class="noteSizeField" value="40" /> px
     </div>
     <div>
         <canvas id="musicCanvas" width="1000" height="500"></canvas>
@@ -49,16 +49,28 @@
         (c) Digitarhuri
     </div>
     <script>
+
+        const inputField = document.getElementById('notesField');
+        const noteSizeField = document.getElementById('noteSizeField');
+
+        // aseta kuuntelijat tekstikentille
+        inputField.addEventListener('input', (event) => {
+            generateNote();
+        });
+
+        noteSizeField.addEventListener('input', (event) => {
+            generateNote();
+        });
+
         const canvas = document.getElementById('musicCanvas');
         const ctx = canvas.getContext('2d');
-
         const staffBottom = 500;
         var noteSize = 50;
 
         // nuottipaletti
         const n = ["g0","a0","h0","c1","d1","e1","f1","g1","a1","h1","c2","d2"];
 
-        document.getElementById("notesField").value = getQueryString();
+        setNotesField(getQueryString());
 
         // lataa nuotit querystring parametrista
         if (getQueryString().length > 0) {
@@ -69,24 +81,45 @@
         function generateNote() {
 
             let xx = 0;
-            const notevalues = document.getElementById("notesField").value.toLowerCase().replace(/\s+/g, "");
-            noteSize = parseInt(document.getElementById("noteSize").value);
+            const notevalues = getNotesField();
+            const notesList = notevalues.split(",");
+
+            resizeCanvas();
 
             // aseta käyttäjän syöttämät nuotit querystring parametriin
             setQueryString(notevalues);
 
-            const notesList = notevalues.split(",");
+            // lue käyttäjän syöttämä nuotin koko
+            noteSize = parseInt(document.getElementById("noteSizeField").value);
 
-            resizeCanvas();
+            // piirrä nuottiviivasto
             //drawLines();
+
+            // maalaa tausta valkoiseksi (muuten jää läpinäkyväksi tallennettavaan kuvaan)
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.font = "25px Arial";
 
             // looppaa käyttäjän syöttämät nuotit
             for (let index = 0; index < notesList.length; index++) {
 
                 let curNote = notesList[index];
                 let curNoteLength = 1;
+                let drawNoteText = false;
+                let drawBarLine = false;
 
-                // käsittele + ja - merkinnät
+                if (curNote == "xx") {
+                    drawBarLine = true;
+                }
+
+                if (curNote.endsWith("*")) {
+                    drawNoteText = true;
+                    curNote = curNote.replace("*","");
+                }
+
                 if (curNote.endsWith("-")) {
                     curNoteLength = 0.5;
                     curNote = curNote.replace("-","");
@@ -104,41 +137,81 @@
                 // salli nuottien syöttäminen numerolla tai ilman numeroa
                 // jos numeroa ei ole annettu, lisää numero
                 if (!curNote.endsWith("0") && !curNote.endsWith("1") && !curNote.endsWith("2")) {
-
                     curNote = curNote + "1";
                 }
 
                 // hateaan nuottitaulukosta käyttäjän syöttämän nuotin indeksinumero, joka toimii nuotin korkeutena piirroksessa
                 const noteHeightIndex = n.findIndex(el=>el == curNote)+1;
-
                 yy = staffBottom - noteHeightIndex * noteSize;
-
-                ctx.strokeStyle = "#000";
-                ctx.lineWidth = 2;
 
                 // jos nuotti löytyi niin piirretään se
                 if (noteHeightIndex > 0) {
                     ctx.strokeRect(xx, yy, noteSize * curNoteLength, noteSize);
+
+                    if (drawNoteText) {
+                        ctx.fillStyle = "black";
+                        ctx.fillText(curNote.toUpperCase().slice(0, -1), xx + noteSize * 0.25, yy + noteSize * 0.75);
+                    }
+
+                } else {
+                    if (drawBarLine) { // piirrä pystyviiva
+                        ctx.fillStyle = "black";
+                        ctx.fillRect(xx - 3 + noteSize / 2, 0, 2, 600);
+                        ctx.fillRect(xx + 3 + noteSize / 2, 0, 4, 600);
+                    }
                 }
 
-                // jos nuotti on + tai - mittainen, säädetään x koordinaattia, jotta seuraava nuotti ei piirry edellisen päälle
                 xx = xx + noteSize * curNoteLength;
             }
         }
 
         function getImage() {
-            // Convert canvas to data URL
             const dataURL = canvas.toDataURL('image/png');
-
-            // Trigger a download
             const link = document.createElement('a');
             link.href = dataURL;
-            link.download = 'canvas-image.png';
+            link.download = 'nuottinauha.png';
             link.click();
         }
 
+        function setQueryString(notevalues) {
+            const url = new URL(window.location.href);
+            const params = url.searchParams;
+            params.set('nuotit', notevalues.replaceAll("/\s+/g", ","));
+
+            window.history.replaceState({}, '', url);
+        }
+
+        function getQueryString() {
+            const currentUrl = window.location.href;
+            const url = new URL(currentUrl);
+            const queryParams = new URLSearchParams(url.search);
+            const paramValue = queryParams.get('nuotit');
+
+            return paramValue.replaceAll(",", " ");
+        }
+
+        function setNotesField(val) {
+            document.getElementById("notesField").value = val
+        }
+
+        function getNotesField() {
+            let notes = document.getElementById("notesField").value.toLowerCase().replace(/\s+/g, ",");
+            
+            if (notes.endsWith(",")) {
+                notes = notes.slice(0, -1);
+            }
+
+            return notes;
+        }
+
+        // Skaalaa canvasta
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.98; // Set canvas width to window width
+            canvas.height = window.innerHeight * 0.8; // Set canvas height to window height
+        }
+
         // Piirrä viivasto
-        function drawLines() {
+        /*function drawLines() {
 
             ctx.strokeStyle = "#aaa";
             ctx.lineWidth = 1;
@@ -158,32 +231,7 @@
                 ctx.lineTo(canvas.width, liney);
                 ctx.stroke();
             }
-        }
-
-        function setQueryString(notevalues) {
-
-            const url = new URL(window.location.href);
-            const params = url.searchParams;
-            params.set('nuotit', notevalues);
-
-            window.history.replaceState({}, '', url);
-        }
-
-        function getQueryString() {
-
-            const currentUrl = window.location.href;
-            const url = new URL(currentUrl);
-            const queryParams = new URLSearchParams(url.search);
-            const paramValue = queryParams.get('nuotit');
-
-            return paramValue;
-        }
-
-        // Skaalaa canvasta
-        function resizeCanvas() {
-            canvas.width = window.innerWidth * 0.95; // Set canvas width to window width
-            canvas.height = window.innerHeight * 0.8; // Set canvas height to window height
-        }
+        }*/
     </script>
 </body>
 </html>
