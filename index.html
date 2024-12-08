@@ -80,7 +80,7 @@
         // pääfunktio nuottien piirtoon
         function generateNote() {
 
-            let xx = 0;
+            let xx = 10;
             const notevalues = getNotesField();
             const notesList = notevalues.split(",");
 
@@ -96,8 +96,8 @@
             //drawLines();
 
             // maalaa tausta valkoiseksi (muuten jää läpinäkyväksi tallennettavaan kuvaan)
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            //ctx.fillStyle = "white";
+            //ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.strokeStyle = "#000";
             ctx.lineWidth = 2;
