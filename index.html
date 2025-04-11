@@ -38,8 +38,7 @@
             <b>NUOTTINAUHA</b> | Syötä nuotit (g0 - d2) esim. a0 h0 c g c2 d2 | Pitkä nuotti: c+ c++ c+++ | Lyhyt nuotti: c- | Tauko: x | Pystyviiva: xx | Kirjain: c*
         </div>
         <input name="notesField" type="text" id="notesField" class="notesfield" value="" />
-        <button onclick="generateNote()">Luo nuotit</button>
-        <button onclick="getImage()">Lataa kuva</button>
+        <button onclick="getImage()">Lataa kuvana</button>
         Nuotin koko: <input name="noteSizeField" type="text" maxlength="5" id="noteSizeField" class="noteSizeField" value="40" /> px
     </div>
     <div>
@@ -83,6 +82,8 @@
             let xx = 10;
             const notevalues = getNotesField();
             const notesList = notevalues.split(",");
+            let prevNote = "";
+            let curNote = "";
 
             resizeCanvas();
 
@@ -106,7 +107,7 @@
             // looppaa käyttäjän syöttämät nuotit
             for (let index = 0; index < notesList.length; index++) {
 
-                let curNote = notesList[index];
+                curNote = notesList[index];
                 let curNoteLength = 1;
                 let drawNoteText = false;
                 let drawBarLine = false;
@@ -140,9 +141,15 @@
                     curNote = curNote + "1";
                 }
 
+                console.log("curNote: " + curNote);
+                console.log("prevNote: " + prevNote);
+
                 // hateaan nuottitaulukosta käyttäjän syöttämän nuotin indeksinumero, joka toimii nuotin korkeutena piirroksessa
                 const noteHeightIndex = n.findIndex(el=>el == curNote)+1;
-                yy = staffBottom - noteHeightIndex * noteSize;
+                const prevNoteHeightIndex = n.findIndex(el=>el == prevNote)+1;
+
+                const yy = staffBottom - noteHeightIndex * noteSize;
+                const yyPrev = staffBottom - prevNoteHeightIndex * noteSize;
 
                 // jos nuotti löytyi niin piirretään se
                 if (noteHeightIndex > 0) {
@@ -160,7 +167,27 @@
                     }
                 }
 
+                console.log("cur" + noteHeightIndex);
+                console.log("prev" + prevNoteHeightIndex);
+
+                if (index > 0) { // älä piirrä pystyviivaa ensimmäisen nuotin kohdalle
+                    
+                    // piirrä pystyviivat isompien hyppyjen väliin .. alhaalta ylös
+                    if (noteHeightIndex - prevNoteHeightIndex > 1) {
+                        ctx.fillStyle = "black";
+                        ctx.fillRect(xx, yy, 2, noteSize*Math.abs(noteHeightIndex - prevNoteHeightIndex));
+                    } 
+                    
+                    // ylhäältä alas
+                    if (noteHeightIndex - prevNoteHeightIndex < -1) {
+                        ctx.fillStyle = "black";
+                        ctx.fillRect(xx, yyPrev, 2, noteSize*Math.abs(noteHeightIndex - prevNoteHeightIndex));
+                    }
+                }
+
                 xx = xx + noteSize * curNoteLength;
+
+                prevNote = curNote;
             }
         }
 
